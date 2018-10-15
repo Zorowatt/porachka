@@ -90,67 +90,68 @@ app.client.request = function(headers,path,method,queryStringObject,payload,call
 
 app.buttonSearch = function(){
   if(document.getElementById("search")){
-    document.getElementById("search").addEventListener("click", function(e){
-
-      // Stop it from redirecting anywhere
-      e.preventDefault();
-      let inputSearch = document.getElementById('s1').value;
-      document.getElementById('s1').value = document.getElementById('s1').value.trim();
-      //@TODO sanity chech of inputSearch
-      inputSearch = typeof(inputSearch)=='string' && inputSearch.trim().length >0 ? inputSearch.trim() : false;
-      if (inputSearch){
-          app.client.request(undefined,'porachki/search','get',{'search':inputSearch},undefined,function(stausCode,payload){
-              if(stausCode==200){
-                  document.getElementById("list").innerHTML='';
-                    payload.forEach(element => {
-                      app.client.request(undefined,'porachki','get',{'id':element},undefined,function(statusCode,payload){
-                          if (statusCode==200){
-                              var ul = document.getElementById("list");
-                              var div= document.createElement('div');
-                              div.id=payload.porachkaId
-                              div.className = 'emfi';
-                              div.addEventListener('click',function(e){
-
-                                //Вариант със презареждане на цялата страница
-                                let location = 'porachki/get?id='+ this.id;
-                                console.log(location)
-                                window.location=location;
-
-                                // @TODO - Вариант с презареждане само на body
-  /*                               app.client.request(undefined,'porachki/dash','get',{'id':this.id},undefined,function(statusCode,payload){
-                                  if (statusCode==200) {
-                                    //console.log(payload.obj)
-                                    let bbb = document.getElementsByClassName('content');
-                                    console.log(bbb)
-                                    bbb.innerHTML='<div>dfsdfds</div>';
-                                    console.log(bbb)
-                                  } else {
-                                    //@TODO deal woth the error
-                                  }
-                                }); */
-
-                              });
-
-                              div.innerHTML += payload.title;
-                              var innerdiv = document.createElement('div');
-                              innerdiv.className = 'inn';
-                              innerdiv.innerHTML += payload.additionalData;
-                              div.appendChild(innerdiv);
-                              ul.appendChild(div);
-                              //@TODO - add event click on each div class emfi
-                              //@TODO - organize appearance order to be the same any time
-                          }
-                      });
-                    });
-              }else{
-                //@TODO the error show if the server returns another statusCode
-              };
-          });
-        };
-    });
+    document.getElementById("search").addEventListener("click", eventFunction,false);
+    document.getElementById("search").addEventListener("touchstart", eventFunction,false);
   };
 };
+var eventFunction = function (event){
 
+  // Stop it from redirecting anywhere
+  event.preventDefault();
+  let inputSearch = document.getElementById('s1').value;
+  document.getElementById('s1').value = document.getElementById('s1').value.trim();
+  //@TODO sanity chech of inputSearch
+  inputSearch = typeof(inputSearch)=='string' && inputSearch.trim().length >0 ? inputSearch.trim() : false;
+  if (inputSearch){
+      app.client.request(undefined,'porachki/search','get',{'search':inputSearch},undefined,function(stausCode,payload){
+          if(stausCode==200){
+              document.getElementById("list").innerHTML='';
+                payload.forEach(element => {
+                  app.client.request(undefined,'porachki','get',{'id':element},undefined,function(statusCode,payload){
+                      if (statusCode==200){
+                          var ul = document.getElementById("list");
+                          var div= document.createElement('div');
+                          div.id=payload.porachkaId
+                          div.className = 'emfi';
+                          div.addEventListener('click',function(e){
+
+                            //Вариант със презареждане на цялата страница
+                            let location = 'porachki/get?id='+ this.id;
+                            console.log(location)
+                            window.location=location;
+
+                            // @TODO - Вариант с презареждане само на body
+/*                               app.client.request(undefined,'porachki/dash','get',{'id':this.id},undefined,function(statusCode,payload){
+                              if (statusCode==200) {
+                                //console.log(payload.obj)
+                                let bbb = document.getElementsByClassName('content');
+                                console.log(bbb)
+                                bbb.innerHTML='<div>dfsdfds</div>';
+                                console.log(bbb)
+                              } else {
+                                //@TODO deal woth the error
+                              }
+                            }); */
+
+                          });
+
+                          div.innerHTML += payload.title;
+                          var innerdiv = document.createElement('div');
+                          innerdiv.className = 'inn';
+                          innerdiv.innerHTML += payload.additionalData;
+                          div.appendChild(innerdiv);
+                          ul.appendChild(div);
+                          //@TODO - add event click on each div class emfi
+                          //@TODO - organize appearance order to be the same any time
+                      }
+                  });
+                });
+          }else{
+            //@TODO the error show if the server returns another statusCode
+          };
+      });
+    };
+};
 
 
 
