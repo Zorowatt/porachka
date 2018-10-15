@@ -1,0 +1,22 @@
+{
+  "name": "porachka",
+  "version": "1.0.0",
+  "description": "not yet",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zorowatt/porachka.git"
+  },
+  "author": "Zlatozar Dichev",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Zorowatt/porachka/issues"
+  },
+  "homepage": "https://github.com/Zorowatt/porachka#readme"
+}
