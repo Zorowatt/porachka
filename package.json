@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/Zorowatt/porachka/issues"
   },
-  "homepage": "https://github.com/Zorowatt/porachka#readme"
+  "homepage": "https://github.com/Zorowatt/porachka#readme",
+  "keywords": [
+    "nnn"
+  ]
 }
