@@ -108,7 +108,7 @@ var eventFunction = function (event){
           if(stausCode==200){
               document.getElementById("list").innerHTML='';
                 payload.forEach(element => {
-                  app.client.request(undefined,'porachki','get',{'id':element},undefined,function(statusCode,payload){
+                  app.client.request(undefined,'api/porachki','get',{'id':element},undefined,function(statusCode,payload){
                       if (statusCode==200){
                           var ul = document.getElementById("list");
                           var div= document.createElement('div');
@@ -308,7 +308,7 @@ app.formResponseProcessor = function(formId,requestPayload,responsePayload){
 
   // If the user just created a new check successfully, redirect back to the dashboard
   if(formId == 'checksCreate'){
-    window.location = '/checks/all';
+    window.location = '/porachki/all';
   }
 
   // If the user just deleted a check, redirect them to the dashboard
@@ -392,13 +392,159 @@ app.logUserOut = function(redirectUser){
 
     // Send the user to the logged out page
     if(redirectUser){
+      localStorage.removeItem('token');
+      app.config.sessionToken=false;
       window.location = '/session/deleted';
     }
 
   });
 };
 
+// Load data on the page
+app.loadDataOnPage = function(){
+  // Get the current page from the body class
+  var bodyClasses = document.querySelector("body").classList;
+  var primaryClass = typeof(bodyClasses[0]) == 'string' ? bodyClasses[0] : false;
 
+  // Logic for account settings page
+  if(primaryClass == 'accountEdit'){
+    app.loadAccountEditPage();
+  }
+
+   // Logic for dashboard page
+  if(primaryClass == 'checksList'){
+    app.dashboardPage();
+  }
+
+
+
+
+
+/*
+  // Logic for check details page
+  if(primaryClass == 'checksEdit'){
+    app.loadChecksEditPage();
+  } */
+};
+
+// Load the account edit page specifically
+app.loadAccountEditPage = function(){
+  // Get the phone number from the current token, or log the user out if none is there
+  var phone = typeof(app.config.sessionToken.phone) == 'string' ? app.config.sessionToken.phone : false;
+  if(phone){
+    // Fetch the user data
+    var queryStringObject = {
+      'phone' : phone
+    };
+    app.client.request(undefined,'api/users','GET',queryStringObject,undefined,function(statusCode,responsePayload){
+      if(statusCode == 200){
+        // Put the data into the forms as values where needed
+        document.querySelector("#accountEdit1 .firstNameInput").value = responsePayload.firstName;
+        document.querySelector("#accountEdit1 .lastNameInput").value = responsePayload.lastName;
+        document.querySelector("#accountEdit1 .displayPhoneInput").value = responsePayload.phone;
+
+        // Put the hidden phone field into both forms
+        var hiddenPhoneInputs = document.querySelectorAll("input.hiddenPhoneNumberInput");
+        for(var i = 0; i < hiddenPhoneInputs.length; i++){
+            hiddenPhoneInputs[i].value = responsePayload.phone;
+        }
+
+      } else {
+        // If the request comes back as something other than 200, log the user our (on the assumption that the api is temporarily down or the users token is bad)
+        app.logUserOut();
+      }
+    });
+  } else {
+    app.logUserOut();
+  }
+};
+
+// Load the dashboard page specifically
+app.dashboardPage = function(){
+  // Get the phone number from the current token, or log the user out if none is there
+  var phone = typeof(app.config.sessionToken.phone) == 'string' ? app.config.sessionToken.phone : false;
+  if(phone){
+    // Fetch the user data
+    var queryStringObject = {
+      'phone' : phone
+    };
+    app.client.request(undefined,'api/users','GET',queryStringObject,undefined,function(statusCode,responsePayload){
+      if(statusCode == 200){
+
+        // Determine how many porachki the user has
+        var allPorachki = typeof(responsePayload.porachki) == 'object' && responsePayload.porachki instanceof Array && responsePayload.porachki.length > 0 ? responsePayload.porachki : [];
+        if(allPorachki.length > 0){
+          var ul = document.getElementById("porachkiList");
+          // Show each created porachka 
+          allPorachki.forEach(function(porachkaId){
+            // Get the data for the porachka
+            var newQueryStringObject = {
+              'id' : porachkaId
+            };
+            app.client.request(undefined,'api/porachki','GET',newQueryStringObject,undefined,function(statusCode,responsePayload){
+              if(statusCode == 200){
+
+                let divTitle = document.createElement('div');
+                let divAdditionalData = document.createElement('div');
+                let divPeriod = document.createElement('div');
+                //let divActive = document.createElement('div');
+                let divId = document.createElement('div');
+
+                divTitle.innerText = responsePayload.title;
+                divAdditionalData.innerText = responsePayload.additionalData;
+                divPeriod.innerText = responsePayload.period;
+                //divActive.innerText = responsePayload.active;
+                divId.innerText = porachkaId;
+
+                //div.id=porachkaId
+                //div.className = 'emfi';
+/*                 div.addEventListener('click',function(e){
+
+                  //Вариант със презареждане на цялата страница
+                  let location = 'porachki/get?id='+ this.id;
+                  console.log(location)
+                  window.location=location;
+                }); */
+
+                //div.innerHTML += payload.title;
+
+                var outerDiv = document.createElement('div');
+                outerDiv.id = porachkaId;
+                //innerdiv.innerHTML += payload.additionalData;
+                outerDiv.appendChild(divTitle);
+                outerDiv.appendChild(divAdditionalData);
+                outerDiv.appendChild(divPeriod);
+                //outerDiv.appendChild(divActive);
+                outerDiv.appendChild(document.createElement('hr'));
+                ul.appendChild(outerDiv);
+              } else {
+                console.log("Error trying to load porachka ID: ",checkId);
+              }
+            });
+          });
+
+          if(allPorachki.length < 5){
+            // Show the createCheck CTA
+            document.getElementById("createCheckCTA").style.display = 'block';
+          }
+
+        } else {
+          // Show 'you have no checks' message
+          document.getElementById("noChecksMessage").style.display = 'table-row';
+
+          // Show the createCheck CTA
+          document.getElementById("createCheckCTA").style.display = 'block';
+
+        }
+      } else {
+        // If the request comes back as something other than 200, log the user our (on the assumption that the api is temporarily down or the users token is bad)
+        app.logUserOut();
+      }
+    });
+  } else {
+    app.logUserOut();
+  }
+};
 
 
 
@@ -421,7 +567,7 @@ app.init = function(){
 //  app.tokenRenewalLoop();
 
   // Load data on page
-//  app.loadDataOnPage();
+  app.loadDataOnPage();
 
 };
 
