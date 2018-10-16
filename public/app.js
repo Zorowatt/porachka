@@ -90,7 +90,7 @@ app.client.request = function(headers,path,method,queryStringObject,payload,call
 
 app.buttonSearch = function(){
   if(document.getElementById("search")){
-    document.getElementById("search").addEventListener("click", eventFunction,false);
+    //document.getElementById("search").addEventListener("click", eventFunction,false);
     document.getElementById("search").addEventListener("touchstart", eventFunction,false);
   };
 };
