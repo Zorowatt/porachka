@@ -257,7 +257,10 @@ app.formResponseProcessor = function(formId,requestPayload,responsePayload){
   var functionToCall = false;
   // If account creation was successful, try to immediately log the user in
   if(formId == 'accountCreate'){
-    // Take the phone and password, and use it to log the user in
+    window.location = '/session/create';
+
+
+    /* // Take the phone and password, and use it to log the user in
     var newPayload = {
       'phone' : requestPayload.phone,
       'password' : requestPayload.password
@@ -276,9 +279,13 @@ app.formResponseProcessor = function(formId,requestPayload,responsePayload){
       } else {
         // If successful, set the token and redirect the user
         app.setSessionToken(newResponsePayload);
+
+
+        // @TODO - reload last location window after account has been created
+                 
         window.location = '/checks/all';
       }
-    });
+    }); */
   }
   // If login was successful, set the token in localstorage and redirect the user
   if(formId == 'sessionCreate'){
@@ -351,6 +358,50 @@ app.getSessionToken = function(){
     }
   }
 };
+
+
+
+// Bind the logout button
+app.bindLogoutButton = function(){
+  document.getElementById("logoutButton").addEventListener("click", function(e){
+
+    // Stop it from redirecting anywhere
+    e.preventDefault();
+
+    // Log the user out
+    app.logUserOut();
+
+  });
+};
+
+// Log the user out then redirect them
+app.logUserOut = function(redirectUser){
+  // Set redirectUser to default to true
+  redirectUser = typeof(redirectUser) == 'boolean' ? redirectUser : true;
+
+  // Get the current token id
+  var tokenId = typeof(app.config.sessionToken.id) == 'string' ? app.config.sessionToken.id : false;
+
+  // Send the current token to the tokens endpoint to delete it
+  var queryStringObject = {
+    'id' : tokenId
+  };
+  app.client.request(undefined,'api/tokens','DELETE',queryStringObject,undefined,function(statusCode,responsePayload){
+    // Set the app.config token as false
+    app.setSessionToken(false);
+
+    // Send the user to the logged out page
+    if(redirectUser){
+      window.location = '/session/deleted';
+    }
+
+  });
+};
+
+
+
+
+
 // Init (bootstrapping)
 app.init = function(){
 
@@ -361,7 +412,7 @@ app.init = function(){
   app.bindForms();
 
   // Bind logout logout button
-//  app.bindLogoutButton();
+  app.bindLogoutButton();
 
   // Get the token from localstorage
   app.getSessionToken();
