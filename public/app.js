@@ -190,8 +190,12 @@ app.bindForms = function(){
             var classOfElement = typeof(elements[i].classList.value) == 'string' && elements[i].classList.value.length > 0 ? elements[i].classList.value : '';
             var valueOfElement = elements[i].type == 'checkbox' && classOfElement.indexOf('multiselect') == -1 ? elements[i].checked : classOfElement.indexOf('intval') == -1 ? elements[i].value : parseInt(elements[i].value);
             var elementIsChecked = elements[i].checked;
-            // Override the method of the form if the input's name is _method
+
             var nameOfElement = elements[i].name;
+
+            payload[nameOfElement] = valueOfElement;
+            /* // Override the method of the form if the input's name is _method
+            
             if(nameOfElement == '_method'){
               method = valueOfElement;
             } else {
@@ -214,7 +218,7 @@ app.bindForms = function(){
               }
 
             }
-          }
+           */}
         }
 
 
@@ -224,7 +228,7 @@ app.bindForms = function(){
         // Call the API
         app.client.request(undefined,path,method,queryStringObject,payload,function(statusCode,responsePayload){
           // Display an error on the form if needed
-          
+          console.log(435)
           if(statusCode !== 200){
 
             if(statusCode == 403){
@@ -308,7 +312,7 @@ app.formResponseProcessor = function(formId,requestPayload,responsePayload){
 
   // If the user just created a new check successfully, redirect back to the dashboard
   if(formId == 'checksCreate'){
-    window.location = '/porachki/all';
+    window.location = '/dash/all';
   }
 
   // If the user just deleted a check, redirect them to the dashboard
@@ -473,9 +477,12 @@ app.dashboardPage = function(){
 
         // Determine how many porachki the user has
         var allPorachki = typeof(responsePayload.porachki) == 'object' && responsePayload.porachki instanceof Array && responsePayload.porachki.length > 0 ? responsePayload.porachki : [];
+        
+        document.getElementById("createCheckCTA").style.display = 'block';
         if(allPorachki.length > 0){
           var ul = document.getElementById("porachkiList");
           // Show each created porachka 
+          
           allPorachki.forEach(function(porachkaId){
             // Get the data for the porachka
             var newQueryStringObject = {
@@ -523,17 +530,17 @@ app.dashboardPage = function(){
             });
           });
 
-          if(allPorachki.length < 5){
+          //if(allPorachki.length < 5){
             // Show the createCheck CTA
-            document.getElementById("createCheckCTA").style.display = 'block';
-          }
+            //document.getElementById("createCheckCTA").style.display = 'block';
+          //}
 
         } else {
           // Show 'you have no checks' message
-          document.getElementById("noChecksMessage").style.display = 'table-row';
+          //document.getElementById("noChecksMessage").style.display = 'table-row';
 
           // Show the createCheck CTA
-          document.getElementById("createCheckCTA").style.display = 'block';
+          //document.getElementById("createCheckCTA").style.display = 'block';
 
         }
       } else {
