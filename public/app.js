@@ -89,10 +89,20 @@ app.client.request = function(headers,path,method,queryStringObject,payload,call
   };
 
 app.buttonSearch = function(){
-  if(document.getElementById("search")){
+  let searchButton = document.getElementById("search");
+  if(searchButton){
     
-    document.getElementById("search").addEventListener("touchstart", eventFunction,false);
-    document.getElementById("search").addEventListener("click", eventFunction,false);
+    searchButton.addEventListener("touchstart", eventFunction,false);
+    searchButton.addEventListener("click", eventFunction,false);
+    document.getElementById("s1").addEventListener("keyup", function(event) {
+      // Cancel the default action, if needed
+      event.preventDefault();
+      // Number 13 is the "Enter" key on the keyboard
+      if (event.keyCode === 13) {
+        // Trigger the button element with a click
+        eventFunction(event);
+      }
+    });
   };
 };
 var eventFunction = function (event){
