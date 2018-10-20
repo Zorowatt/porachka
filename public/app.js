@@ -18,7 +18,33 @@ app.config = {
 
 // AJAX Client (for RESTful API)
 app.client = {}
+// Init (bootstrapping)
+app.init = function(){
 
+  // Bind all form submissions
+  app.bindForms();
+
+  // Bind logout logout button
+  app.bindLogoutButton();
+
+  // Get the token from localstorage
+  app.getSessionToken();
+
+  // Renew token
+  app.tokenRenewalLoop();
+
+  // Load data on page
+  app.loadDataOnPage();
+
+  //Activate Auto Complet on home window
+  app.homeAutoComplete();
+
+};
+
+// Call the init processes after the window loads
+window.onload = function(){
+  app.init();
+};
   // Bind each window forms after html reload
 app.bindForms = function(){
   if(document.querySelector("form")){
@@ -60,71 +86,6 @@ app.bindForms = function(){
       });
     }
   }
-};
-// Form response processor
-app.formResponseProcessor = function(formId,requestPayload,responsePayload){
-  var functionToCall = false;
-  // If account creation was successful, try to immediately log the user in
-  if(formId == 'accountCreate'){
-    window.location = '/session/create';
-
-
-    /* // Take the phone and password, and use it to log the user in
-    var newPayload = {
-      'phone' : requestPayload.phone,
-      'password' : requestPayload.password
-    };
-
-    app.client.request(undefined,'api/tokens','POST',undefined,newPayload,function(newStatusCode,newResponsePayload){
-      // Display an error on the form if needed
-      if(newStatusCode !== 200){
-
-        // Set the formError field with the error text
-        document.querySelector("#"+formId+" .formError").innerHTML = 'Sorry, an error has occured. Please try again.';
-
-        // Show (unhide) the form error field on the form
-        document.querySelector("#"+formId+" .formError").style.display = 'block';
-
-      } else {
-        // If successful, set the token and redirect the user
-        app.setSessionToken(newResponsePayload);
-
-
-        // @TODO - reload last location window after account has been created
-                 
-        window.location = '/checks/all';
-      }
-    }); */
-  }
-  // If login was successful, set the token in localstorage and redirect the user
-  if(formId == 'login'){
-    
-    app.setSessionToken(responsePayload);
-    window.location = '/';
-  }
-
-  // If forms saved successfully and they have success messages, show them
-  var formsWithSuccessMessages = ['accountEdit1', 'accountEdit2','checksEdit1'];
-  if(formsWithSuccessMessages.indexOf(formId) > -1){
-    document.querySelector("#"+formId+" .formSuccess").style.display = 'block';
-  }
-
-  // If the user just deleted their account, redirect them to the account-delete page
-  if(formId == 'accountEdit3'){
-    app.logUserOut(false);
-    window.location = '/account/deleted';
-  }
-
-  // If the user just created a new check successfully, redirect back to the dashboard
-  if(formId == 'checksCreate'){
-    window.location = '/dash/all';
-  }
-
-  // If the user just deleted a check, redirect them to the dashboard
-  if(formId == 'checksEdit2'){
-    window.location = '/dash/all';
-  }
-
 };
 
 // Set (or remove) the loggedIn class from the body
@@ -181,8 +142,6 @@ app.getSessionToken = function(){
     }
   }
 };
-
-
 
 // Bind the logout button
 app.bindLogoutButton = function(){
@@ -259,26 +218,16 @@ app.loadPorachkaEditPage = function(){
     };
     app.client.request(undefined,'api/porachki','GET',queryStringObject,undefined,function(statusCode,responsePayload){
       if(statusCode == 200){
-        //console.log(responsePayload)
          // Put the hidden id field into both forms
         var hiddenIdInputs = document.querySelectorAll("input.hiddenIdInput");
         for(var i = 0; i < hiddenIdInputs.length; i++){
             hiddenIdInputs[i].value = responsePayload.id;
         }
-
         // Put the data into the top form as values where needed
         document.querySelector("#porachkaEdit .displayIdInput").value = responsePayload.porachkaId;
         document.querySelector("#porachkaEdit .displayTitleInput").value = responsePayload.title;
         document.querySelector("#porachkaEdit .displayAdditionalData").value = responsePayload.additionalData;
         document.querySelector("#porachkaEdit .intval").value = responsePayload.period;
-        //document.querySelector("#checksEdit1 .methodInput").value = responsePayload.method;
-        //document.querySelector("#checksEdit1 .timeoutInput").value = responsePayload.timeoutSeconds;
-   /*      var successCodeCheckboxes = document.querySelectorAll("#checksEdit1 input.successCodesInput");
-        for(var i = 0; i < successCodeCheckboxes.length; i++){
-          if(responsePayload.successCodes.indexOf(parseInt(successCodeCheckboxes[i].value)) > -1){
-            successCodeCheckboxes[i].checked = true;
-          }
-        }  */
       } else {
         // If the request comes back as something other than 200, redirect back to dashboard
         window.location = '/porachki/all';
@@ -365,18 +314,6 @@ app.dashboardPage = function(){
                 //divActive.innerText = responsePayload.active;
                 divId.innerText = porachkaId;
 
-                //div.id=porachkaId
-                //div.className = 'emfi';
-/*                 div.addEventListener('click',function(e){
-
-                  //Вариант със презареждане на цялата страница
-                  let location = 'porachki/get?id='+ this.id;
-                  console.log(location)
-                  window.location=location;
-                }); */
-
-                //div.innerHTML += payload.title;
-
                 var outerDiv = document.createElement('div');
                 outerDiv.id = porachkaId;
                 //innerdiv.innerHTML += payload.additionalData;
@@ -392,11 +329,6 @@ app.dashboardPage = function(){
               }
             });
           });
-
-          //if(allPorachki.length < 5){
-            // Show the createCheck CTA
-            //document.getElementById("createCheckCTA").style.display = 'block';
-          //}
 
         } else {
           // Show 'you have no checks' message
@@ -419,36 +351,10 @@ app.dashboardPage = function(){
 
 
 
-// Init (bootstrapping)
-app.init = function(){
-
-  //app.buttonSearch();
 
 
-  // Bind all form submissions
-  app.bindForms();
-
-  // Bind logout logout button
-  app.bindLogoutButton();
-
-  // Get the token from localstorage
-  app.getSessionToken();
-
-  // Renew token
-//app.tokenRenewalLoop();
-
-  // Load data on page
-  app.loadDataOnPage();
-
-};
-
-// Call the init processes after the window loads
-window.onload = function(){
-  app.init();
-};
-
-// Interface for makin API calls
-// Тази функция ще се вика винаги гогато ще изпращаме рекуест към сървъра
+// Interface for making API calls
+// Тази функция ще се вика винаги когато ще изпращаме рекуест към сървъра
 app.client.request = function(headers,path,method,queryStringObject,payload,callback){
 
   // Set defaults / sanity check
@@ -820,7 +726,6 @@ app.porachkaEdit = function(formId){
    });
 };
 app.home = function (event){
-
   let inputSearch = document.getElementById('s1').value;
   document.getElementById('s1').value = document.getElementById('s1').value.trim();
   //@TODO sanity chech of inputSearch
@@ -881,3 +786,165 @@ app.home = function (event){
       });
     };
 };
+
+
+// Loop to renew token often
+app.tokenRenewalLoop = function(){
+  setInterval(function(){
+    app.renewToken(function(err){
+      if(!err){
+        console.log("Token renewed successfully @ "+Date.now());
+      }
+    });
+  },1000 * 60);
+};
+// Renew the token
+app.renewToken = function(callback){
+  var currentToken = typeof(app.config.sessionToken) == 'object' ? app.config.sessionToken : false;
+  if(currentToken){
+    // Update the token with a new expiration
+    var payload = {
+      'id' : currentToken.id,
+      'extend' : true,
+    };
+    app.client.request(undefined,'api/tokens','PUT',undefined,payload,function(statusCode,responsePayload){
+      // Display an error on the form if needed
+      if(statusCode == 200){
+        // Get the new token details
+        var queryStringObject = {'id' : currentToken.id};
+        app.client.request(undefined,'api/tokens','GET',queryStringObject,undefined,function(statusCode,responsePayload){
+          // Display an error on the form if needed
+          if(statusCode == 200){
+            app.setSessionToken(responsePayload);
+            callback(false);
+          } else {
+            app.setSessionToken(false);
+            callback(true);
+          }
+        });
+      } else {
+        app.setSessionToken(false);
+        callback(true);
+      }
+    });
+  } else {
+    app.setSessionToken(false);
+    callback(true);
+  }
+};
+
+
+
+app.homeAutoComplete = function(){
+    // Get the current page from the body class
+    var bodyClasses = document.querySelector("body").classList;
+    var primaryClass = typeof(bodyClasses[0]) == 'string' ? bodyClasses[0] : false;
+  
+    // Logic for account settings page
+    if(primaryClass == 'index'){
+
+      document.getElementById('s1').addEventListener("keydown", function(event){rrr(event)});
+     
+      function rrr(e) {
+        console.log(e)
+        var input = e.target,
+            val = input.value;
+            list = input.getAttribute('list'),
+            options = document.getElementById(list).childNodes;
+        for(var i = 0; i < options.length; i++) {
+          if(options[i].innerText === val) {
+            // An item was selected from the list!
+            // yourCallbackHere()
+            alert('item selected: ' + val);
+            break;
+          }
+        } 
+      }
+      
+     
+
+
+      // Add a keyup event listener to our input element
+      document.getElementById('s1').addEventListener("input", function(event){hinter(event)});
+      // create one global XHR object 
+      // so we can abort old requests when a new one is make
+      window.hinterXHR = new XMLHttpRequest();
+
+
+      /*       console.log(document.querySelector('input[list="choose"]'));
+      document.querySelector('input[list="choose"]').addEventListener('input', onInput);
+      function onInput(e) {
+        var input = e.target,
+            val = input.value;
+            list = input.getAttribute('list'),
+            options = document.getElementById(list).childNodes;
+        for(var i = 0; i < options.length; i++) {
+          if(options[i].innerText === val) {
+            // An item was selected from the list!
+            // yourCallbackHere()
+            alert('item selected: ' + val);
+            break;
+          }
+        } 
+      } */
+
+
+      // Autocomplete for form
+      var hinter = function (event) {
+         var input = event.target;
+        var choose = document.getElementById('choose');
+        // minimum number of characters before we start to generate suggestions
+        var min_characters = 1;
+        if (input.value.length < min_characters ) { 
+          return;
+        } else { 
+          window.hinterXHR.abort();
+          window.hinterXHR.onreadystatechange = function() {
+            if (this.readyState == 4 && this.status == 200) {
+              var response = JSON.parse( this.responseText ); 
+              choose.innerHTML = "";
+              if (response.length>0 && typeof(response)=='object'){
+
+
+
+
+                response.forEach(function(item) {
+                            // Create a new <option> element.
+                            var option = document.createElement('option');
+                            option.value = item;
+                            choose.appendChild(option);
+                        });
+                
+              };
+            }
+          };
+          window.hinterXHR.open("GET", "/query?search=" + input.value, true);
+          window.hinterXHR.send()
+        }
+      }
+    }
+};
+
+
+
+
+
+/*   function validateForm(){
+
+  // Get the input element
+  var input = document.getElementById('s1');
+  // Get the datalist
+  var choose = document.getElementById('choose');
+
+
+  // If we find the input inside our list, we submit the form
+  for (var element of choose.children) {
+    if(element.value == input.value) {
+      return true;
+    }
+  }
+
+  // we send an error message
+  alert("name input is invalid")
+  return false;
+} */

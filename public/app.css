@@ -15,8 +15,10 @@ body,p,h1,h2,h3,h4,h5,h6,div,span,header,footer,img,a,a:hover,a:active,a:visited
   color: #1a1a1a;
   border-width: 0;
 }
-
-
+/*  removes the arrow from the datalist of the inputs  */
+input::-webkit-calendar-picker-indicator {
+  opacity: 0;
+}
 body, html {
   height: calc(100%-2em);
   margin: 0;
