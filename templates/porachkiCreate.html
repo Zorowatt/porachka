@@ -1,25 +1,25 @@
-<h1>Create A Check</h1>
-<h2>Your check will run once per minute</h2>
+<h1>Създаване на Поръчка</h1>
+
 <a class="backButton" href="/dash/all">Back</a>
 <hr />
 
 
 <div class="formWrapper">
-  <form id="checksCreate" action="/api/porachki" method="POST">
+  <form id="porachkaCreate" action="/api/porachki" method="POST">
     <div class="formError"></div>
     <div class="inputWrapper">
-      <div class="inputLabel">Title</div>
-      <input type="text" name="title" placeholder="Въведете заглавие" />
+      <div class="inputLabel">Заглавие</div>
+      <input type="text" id="title" placeholder="Въведете заглавие" />
     </div>
     <div class="inputWrapper">
-      <div class="inputLabel">Additional Information</div>
-      <textarea rows="4" cols="50" name="additionalData" placeholder="Въведете описателна информация"></textarea>
+      <div class="inputLabel">Допълнителна Информация</div>
+      <textarea rows="4" cols="50" id="additionalData" placeholder="Въведете описателна информация"></textarea>
     </div>
 
 
     <div class="inputWrapper">
-      <div class="inputLabel">Timeout</div>
-      <select class="intval" name="period">
+      <div class="inputLabel">Време за изпълнение</div>
+      <select class="intval" id="period">
         <option value="1">1 ден</option>
         <option value="2">2 дена</option>
         <option value="3">3 дена</option>
@@ -30,7 +30,7 @@
 
 
     <div class="inputWrapper ctaWrapper">
-      <button type="submit" class="cta green">Create Check</button>
+      <button type="submit" class="cta green">Направи Поръчка</button>
     </div>
   </form>
 </div>

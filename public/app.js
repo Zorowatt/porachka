@@ -19,249 +19,44 @@ app.config = {
 // AJAX Client (for RESTful API)
 app.client = {}
 
-// Interface for makin API calls
-// Тази функция ще се вика винаги гогато ще изпращаме рекуест към сървъра
-app.client.request = function(headers,path,method,queryStringObject,payload,callback){
-
-    // Set defaults / sanity check
-    headers = typeof(headers) == 'object' && headers !== null ? headers : {};
-    path = typeof(path) == 'string' ? path : '/';
-    method = typeof(method) == 'string' && ['POST','GET','PUT','DELETE'].indexOf(method.toUpperCase()) > -1 ? method.toUpperCase() : 'GET';
-    queryStringObject = typeof(queryStringObject) == 'object' && queryStringObject !== null ? queryStringObject : {};
-    payload = typeof(payload) == 'object' && payload !== null ? payload : {};
-    callback = typeof(callback) == 'function' ? callback : false;
-  
-    // For each query string parameter sent, add it to the path
-    var requestUrl = path+'?';
-    var counter = 0;
-    for(var queryKey in queryStringObject){
-       if(queryStringObject.hasOwnProperty(queryKey)){
-         counter++;
-         // If at least one query string parameter has already been added, preprend new ones with an ampersand
-         if(counter > 1){
-           requestUrl+='&';
-         }
-         // Add the key and value
-         requestUrl+=queryKey+'='+queryStringObject[queryKey];
-       }
-    }
-  
-    // Form the http request as a JSON type
-    var xhr = new XMLHttpRequest();
-    xhr.open(method, requestUrl, true);
-    xhr.setRequestHeader("Content-type", "application/json");
-  
-    // For each header sent, add it to the request
-    for(var headerKey in headers){
-       if(headers.hasOwnProperty(headerKey)){
-         xhr.setRequestHeader(headerKey, headers[headerKey]);
-       }
-    }
-  
-    // If there is a current session token set, add that as a header
-    if(app.config.sessionToken){
-      xhr.setRequestHeader("token", app.config.sessionToken.id);
-    }
-  
-    // When the request comes back, handle the response
-    xhr.onreadystatechange = function() {
-        if(xhr.readyState == XMLHttpRequest.DONE) {
-          var statusCode = xhr.status;
-          var responseReturned = xhr.responseText;
-  
-          // Callback if requested
-          if(callback){
-            try{
-              var parsedResponse = JSON.parse(responseReturned);
-              callback(statusCode,parsedResponse);
-            } catch(e){
-              callback(statusCode,false);
-            }
-  
-          }
-        }
-    }
-  
-    // Send the payload as JSON
-    var payloadString = JSON.stringify(payload);
-    xhr.send(payloadString);
-  
-  };
-
-app.buttonSearch = function(){
-  let searchButton = document.getElementById("search");
-  if(searchButton){
-    
-    searchButton.addEventListener("touchstart", eventFunction,false);
-    searchButton.addEventListener("click", eventFunction,false);
-    document.getElementById("s1").addEventListener("keyup", function(event) {
-      // Cancel the default action, if needed
-      event.preventDefault();
-      // Number 13 is the "Enter" key on the keyboard
-      if (event.keyCode === 13) {
-        // Trigger the button element with a click
-        eventFunction(event);
-      }
-    });
-  };
-};
-var eventFunction = function (event){
-
-  // Stop it from redirecting anywhere
-  event.preventDefault();
-  let inputSearch = document.getElementById('s1').value;
-  document.getElementById('s1').value = document.getElementById('s1').value.trim();
-  //@TODO sanity chech of inputSearch
-  inputSearch = typeof(inputSearch)=='string' && inputSearch.trim().length >0 ? inputSearch.trim() : false;
-  if (inputSearch){
-      app.client.request(undefined,'porachki/search','get',{'search':inputSearch},undefined,function(stausCode,payload){
-          if(stausCode==200){
-              document.getElementById("list").innerHTML='';
-                payload.forEach(element => {
-                  app.client.request(undefined,'api/porachki','get',{'id':element},undefined,function(statusCode,payload){
-                      if (statusCode==200){
-                          var ul = document.getElementById("list");
-                          var div= document.createElement('div');
-                          div.id=payload.porachkaId
-                          div.className = 'emfi';
-                          div.addEventListener('click',function(e){
-
-                            //Вариант със презареждане на цялата страница
-                            let location = 'porachki/get?id='+ this.id;
-                            console.log(location)
-                            window.location=location;
-
-                            // @TODO - Вариант с презареждане само на body
-/*                               app.client.request(undefined,'porachki/dash','get',{'id':this.id},undefined,function(statusCode,payload){
-                              if (statusCode==200) {
-                                //console.log(payload.obj)
-                                let bbb = document.getElementsByClassName('content');
-                                console.log(bbb)
-                                bbb.innerHTML='<div>dfsdfds</div>';
-                                console.log(bbb)
-                              } else {
-                                //@TODO deal woth the error
-                              }
-                            }); */
-
-                          });
-
-                          div.innerHTML += payload.title;
-                          var innerdiv = document.createElement('div');
-                          innerdiv.className = 'inn';
-                          innerdiv.innerHTML += payload.additionalData;
-                          div.appendChild(innerdiv);
-                          ul.appendChild(div);
-                          //@TODO - add event click on each div class emfi
-                          //@TODO - organize appearance order to be the same any time
-                      }
-                  });
-                });
-          }else{
-            //@TODO the error show if the server returns another statusCode
-          };
-      });
-    };
-};
-
-
-
-
-
-  // Bind the forms
+  // Bind each window forms after html reload
 app.bindForms = function(){
   if(document.querySelector("form")){
-
     var allForms = document.querySelectorAll("form");
+
     for(var i = 0; i < allForms.length; i++){
         allForms[i].addEventListener("submit", function(e){
-
-        // Stop it from submitting
         e.preventDefault();
-        var formId = this.id;
-        var path = this.action;
-        var method = this.method.toUpperCase();
+        var formId = this.id;  
 
-        // Hide the error message (if it's currently shown due to a previous error)
-        document.querySelector("#"+formId+" .formError").style.display = 'none';
-
-        // Hide the success message (if it's currently shown due to a previous error)
-        if(document.querySelector("#"+formId+" .formSuccess")){
-          document.querySelector("#"+formId+" .formSuccess").style.display = 'none';
+        //Log in user
+        if (formId == "login"){ 
+          app.login(formId);
         }
-
-
-        // Turn the inputs into a payload
-        var payload = {};
-        var elements = this.elements;
-        for(var i = 0; i < elements.length; i++){
-          if(elements[i].type !== 'submit'){
-            // Determine class of element and set value accordingly
-            var classOfElement = typeof(elements[i].classList.value) == 'string' && elements[i].classList.value.length > 0 ? elements[i].classList.value : '';
-            var valueOfElement = elements[i].type == 'checkbox' && classOfElement.indexOf('multiselect') == -1 ? elements[i].checked : classOfElement.indexOf('intval') == -1 ? elements[i].value : parseInt(elements[i].value);
-            var elementIsChecked = elements[i].checked;
-
-            var nameOfElement = elements[i].name;
-
-            payload[nameOfElement] = valueOfElement;
-            /* // Override the method of the form if the input's name is _method
-            
-            if(nameOfElement == '_method'){
-              method = valueOfElement;
-            } else {
-              // Create an payload field named "method" if the elements name is actually httpmethod
-              if(nameOfElement == 'httpmethod'){
-                nameOfElement = 'method';
-              }
-              // Create an payload field named "id" if the elements name is actually uid
-              if(nameOfElement == 'uid'){
-                nameOfElement = 'id';
-              }
-              // If the element has the class "multiselect" add its value(s) as array elements
-              if(classOfElement.indexOf('multiselect') > -1){
-                if(elementIsChecked){
-                  payload[nameOfElement] = typeof(payload[nameOfElement]) == 'object' && payload[nameOfElement] instanceof Array ? payload[nameOfElement] : [];
-                  payload[nameOfElement].push(valueOfElement);
-                }
-              } else {
-                payload[nameOfElement] = valueOfElement;
-              }
-
-            }
-           */}
-        }
-
-
-        // If the method is DELETE, the payload should be a queryStringObject instead
-        var queryStringObject = method == 'DELETE' ? payload : {};
-
-        // Call the API
-        app.client.request(undefined,path,method,queryStringObject,payload,function(statusCode,responsePayload){
-          // Display an error on the form if needed
-          console.log(435)
-          if(statusCode !== 200){
-
-            if(statusCode == 403){
-              // log the user out
-              app.logUserOut();
-
-            } else {
-
-              // Try to get the error from the api, or set a default error message
-              var error = typeof(responsePayload.Error) == 'string' ? responsePayload.Error : 'An error has occured, please try again';
-
-              // Set the formError field with the error text
-              document.querySelector("#"+formId+" .formError").innerHTML = error;
-
-              // Show (unhide) the form error field on the form
-              document.querySelector("#"+formId+" .formError").style.display = 'block';
-            }
-          } else {
-            // If successful, send to form response processor
-            app.formResponseProcessor(formId,payload,responsePayload);
-          }
-
-        });
+        if (formId == "accountCreate"){
+          app.signUp(formId);
+        };
+        if (formId == "accountEdit"){
+          app.accountEdit(formId);
+        };
+         if (formId == "passwordEdit"){
+          app.passwordEdit(formId);
+        };
+         if (formId == "accountDelete"){
+          app.accountDelete(formId);
+        }; 
+        if (formId == "home"){
+          app.home(formId);
+        };
+        if (formId == "porachkaDelete"){
+          app.porachkaDelete(formId);
+        };
+        if (formId == "porachkaCreate"){
+          app.porachkaCreate(formId);
+        };
+        if (formId == "porachkaEdit"){
+          app.porachkaEdit(formId);
+        }; 
       });
     }
   }
@@ -302,7 +97,7 @@ app.formResponseProcessor = function(formId,requestPayload,responsePayload){
     }); */
   }
   // If login was successful, set the token in localstorage and redirect the user
-  if(formId == 'sessionCreate'){
+  if(formId == 'login'){
     
     app.setSessionToken(responsePayload);
     window.location = '/';
@@ -327,18 +122,32 @@ app.formResponseProcessor = function(formId,requestPayload,responsePayload){
 
   // If the user just deleted a check, redirect them to the dashboard
   if(formId == 'checksEdit2'){
-    window.location = '/checks/all';
+    window.location = '/dash/all';
   }
 
 };
 
 // Set (or remove) the loggedIn class from the body
-app.setLoggedInClass = function(add){
+app.setLoggedInClass = function(add,token){
   var target = document.querySelector("body");
   if(add){
     target.classList.add('loggedIn');
+      let name = 'myCookie';
+      let value = token.id;
+      let days= 2;
+      var expires = "";
+      if (days) {
+          var date = new Date();
+          date.setTime(date.getTime() + (days*24*60*60*1000));
+          expires = "; expires=" + date.toUTCString();
+      }
+      document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+  
   } else {
     target.classList.remove('loggedIn');
+    let name = 'myCookie';
+    document.cookie = name+'=; Max-Age=-99999999;';
+    window.localStorage.removeItem('token');
   }
 };
 
@@ -348,7 +157,7 @@ app.setSessionToken = function(token){
   var tokenString = JSON.stringify(token);
   localStorage.setItem('token',tokenString);
   if(typeof(token) == 'object'){
-    app.setLoggedInClass(true);
+    app.setLoggedInClass(true,token);
   } else {
     app.setLoggedInClass(false);
   }
@@ -362,7 +171,7 @@ app.getSessionToken = function(){
       var token = JSON.parse(tokenString);
       app.config.sessionToken = token;
       if(typeof(token) == 'object'){
-        app.setLoggedInClass(true);
+        app.setLoggedInClass(true,token);
       } else {
         app.setLoggedInClass(false);
       }
@@ -408,6 +217,8 @@ app.logUserOut = function(redirectUser){
     if(redirectUser){
       localStorage.removeItem('token');
       app.config.sessionToken=false;
+      let name = 'myCookie';
+      document.cookie = name+'=; Max-Age=-99999999;';
       window.location = '/session/deleted';
     }
 
@@ -430,16 +241,54 @@ app.loadDataOnPage = function(){
     app.dashboardPage();
   }
 
-
-
-
-
-/*
-  // Logic for check details page
-  if(primaryClass == 'checksEdit'){
-    app.loadChecksEditPage();
-  } */
+  // Logic for porachka details page
+  if(primaryClass == 'porachkaEdit'){
+    app.loadPorachkaEditPage();
+  } 
 };
+
+// Load the porachka edit page specifically
+app.loadPorachkaEditPage = function(){
+  // Get the check id from the query string, if none is found then redirect back to dashboard
+  var id = typeof(window.location.href.split('=')[1]) == 'string' && window.location.href.split('=')[1].length > 0 ? window.location.href.split('=')[1] : false;
+  
+  if(id){
+    // Fetch the check data
+    var queryStringObject = {
+      'id' : id
+    };
+    app.client.request(undefined,'api/porachki','GET',queryStringObject,undefined,function(statusCode,responsePayload){
+      if(statusCode == 200){
+        //console.log(responsePayload)
+         // Put the hidden id field into both forms
+        var hiddenIdInputs = document.querySelectorAll("input.hiddenIdInput");
+        for(var i = 0; i < hiddenIdInputs.length; i++){
+            hiddenIdInputs[i].value = responsePayload.id;
+        }
+
+        // Put the data into the top form as values where needed
+        document.querySelector("#porachkaEdit .displayIdInput").value = responsePayload.porachkaId;
+        document.querySelector("#porachkaEdit .displayTitleInput").value = responsePayload.title;
+        document.querySelector("#porachkaEdit .displayAdditionalData").value = responsePayload.additionalData;
+        document.querySelector("#porachkaEdit .intval").value = responsePayload.period;
+        //document.querySelector("#checksEdit1 .methodInput").value = responsePayload.method;
+        //document.querySelector("#checksEdit1 .timeoutInput").value = responsePayload.timeoutSeconds;
+   /*      var successCodeCheckboxes = document.querySelectorAll("#checksEdit1 input.successCodesInput");
+        for(var i = 0; i < successCodeCheckboxes.length; i++){
+          if(responsePayload.successCodes.indexOf(parseInt(successCodeCheckboxes[i].value)) > -1){
+            successCodeCheckboxes[i].checked = true;
+          }
+        }  */
+      } else {
+        // If the request comes back as something other than 200, redirect back to dashboard
+        window.location = '/porachki/all';
+      }
+    });
+  } else {
+    window.location = '/porachki/all';
+  }
+};
+
 
 // Load the account edit page specifically
 app.loadAccountEditPage = function(){
@@ -453,9 +302,9 @@ app.loadAccountEditPage = function(){
     app.client.request(undefined,'api/users','GET',queryStringObject,undefined,function(statusCode,responsePayload){
       if(statusCode == 200){
         // Put the data into the forms as values where needed
-        document.querySelector("#accountEdit1 .firstNameInput").value = responsePayload.firstName;
-        document.querySelector("#accountEdit1 .lastNameInput").value = responsePayload.lastName;
-        document.querySelector("#accountEdit1 .displayPhoneInput").value = responsePayload.phone;
+        document.querySelector("#accountEdit .firstNameInput").value = responsePayload.firstName;
+        document.querySelector("#accountEdit .lastNameInput").value = responsePayload.lastName;
+        document.querySelector("#accountEdit .displayPhoneInput").value = responsePayload.phone;
 
         // Put the hidden phone field into both forms
         var hiddenPhoneInputs = document.querySelectorAll("input.hiddenPhoneNumberInput");
@@ -506,6 +355,9 @@ app.dashboardPage = function(){
                 let divPeriod = document.createElement('div');
                 //let divActive = document.createElement('div');
                 let divId = document.createElement('div');
+                let anch = document.createElement('a');
+                anch.href = '/porachka/edit?id='+ porachkaId;
+                anch.innerText = 'Edit';
 
                 divTitle.innerText = responsePayload.title;
                 divAdditionalData.innerText = responsePayload.additionalData;
@@ -532,6 +384,7 @@ app.dashboardPage = function(){
                 outerDiv.appendChild(divAdditionalData);
                 outerDiv.appendChild(divPeriod);
                 //outerDiv.appendChild(divActive);
+                outerDiv.appendChild(anch);
                 outerDiv.appendChild(document.createElement('hr'));
                 ul.appendChild(outerDiv);
               } else {
@@ -560,6 +413,7 @@ app.dashboardPage = function(){
     });
   } else {
     app.logUserOut();
+    
   }
 };
 
@@ -568,7 +422,7 @@ app.dashboardPage = function(){
 // Init (bootstrapping)
 app.init = function(){
 
-  app.buttonSearch();
+  //app.buttonSearch();
 
 
   // Bind all form submissions
@@ -581,7 +435,7 @@ app.init = function(){
   app.getSessionToken();
 
   // Renew token
-//  app.tokenRenewalLoop();
+//app.tokenRenewalLoop();
 
   // Load data on page
   app.loadDataOnPage();
@@ -591,4 +445,439 @@ app.init = function(){
 // Call the init processes after the window loads
 window.onload = function(){
   app.init();
+};
+
+// Interface for makin API calls
+// Тази функция ще се вика винаги гогато ще изпращаме рекуест към сървъра
+app.client.request = function(headers,path,method,queryStringObject,payload,callback){
+
+  // Set defaults / sanity check
+  headers = typeof(headers) == 'object' && headers !== null ? headers : {};
+  path = typeof(path) == 'string' ? path : '/';
+  method = typeof(method) == 'string' && ['POST','GET','PUT','DELETE'].indexOf(method.toUpperCase()) > -1 ? method.toUpperCase() : 'GET';
+  queryStringObject = typeof(queryStringObject) == 'object' && queryStringObject !== null ? queryStringObject : {};
+  payload = typeof(payload) == 'object' && payload !== null ? payload : {};
+  callback = typeof(callback) == 'function' ? callback : false;
+
+  // For each query string parameter sent, add it to the path
+  var requestUrl = path+'?';
+  var counter = 0;
+  for(var queryKey in queryStringObject){
+     if(queryStringObject.hasOwnProperty(queryKey)){
+       counter++;
+       // If at least one query string parameter has already been added, preprend new ones with an ampersand
+       if(counter > 1){
+         requestUrl+='&';
+       }
+       // Add the key and value
+       requestUrl+=queryKey+'='+queryStringObject[queryKey];
+     }
+  }
+
+  // Form the http request as a JSON type
+  var xhr = new XMLHttpRequest();
+  xhr.open(method, requestUrl, true);
+  xhr.setRequestHeader("Content-type", "application/json");
+
+  // For each header sent, add it to the request
+  for(var headerKey in headers){
+     if(headers.hasOwnProperty(headerKey)){
+       xhr.setRequestHeader(headerKey, headers[headerKey]);
+     }
+  }
+
+  // If there is a current session token set, add that as a header
+  if(app.config.sessionToken){
+    xhr.setRequestHeader("token", app.config.sessionToken.id);
+  }
+
+  // When the request comes back, handle the response
+  xhr.onreadystatechange = function() {
+      if(xhr.readyState == XMLHttpRequest.DONE) {
+        var statusCode = xhr.status;
+        var responseReturned = xhr.responseText;
+
+        // Callback if requested
+        if(callback){
+          try{
+            var parsedResponse = JSON.parse(responseReturned);
+            callback(statusCode,parsedResponse);
+          } catch(e){
+            
+            callback(statusCode,false);
+          }
+
+        }
+      }
+  }
+
+  // Send the payload as JSON
+  var payloadString = JSON.stringify(payload);
+  xhr.send(payloadString);
+
+};
+
+app.signUp = function(formId){
+
+          // @TODO - check and inform if there is logged user already
+
+             // Hide the error message (if it's currently shown due to a previous error)
+             document.querySelector("#"+formId+" .formError").style.display = 'none';
+             // Hide the success message (if it's currently shown due to a previous error)
+            if(document.querySelector("#"+formId+" .formSuccess")){
+            document.querySelector("#"+formId+" .formSuccess").style.display = 'none';
+            } 
+  
+            let method = "POST",
+            path = '/api/users',
+            payload = {};
+    
+            //var elements = this.elements;
+            payload.phone = document.getElementById('phone').value;
+            payload.firstName = document.getElementById('firstName').value;
+            payload.lastName = document.getElementById('lastName').value;
+            payload.password = document.getElementById('password').value;
+            payload.tosAgreement = document.getElementById('tosAgreement').checked;
+            app.client.request(undefined,path,method,undefined,payload,function(statusCode,responsePayload){
+               // Display an error on the form if needed
+               if(statusCode !== 200){
+                 
+                 if(statusCode == 403){
+                   // log the user out
+                   app.logUserOut();
+                 } else {
+                   // Try to get the error from the api, or set a default error message
+                   var error = typeof(responsePayload.Error) == 'string' ? responsePayload.Error : 'An error has occured, please try again';
+                   // Set the formError field with the error text
+                   document.querySelector("#"+formId+" .formError").innerHTML = error;
+                   // Show (unhide) the form error field on the form
+                   document.querySelector("#"+formId+" .formError").style.display = 'block';
+                 }
+               } else {
+  
+                 // @TODO inform that user has been created/signed up
+                 //       or redirect the user to the sign up window
+                 confirm("User Signed up!");
+/*                  var parts = document.referrer.split('://')[1].split('/');
+                 var pathName = parts.slice(1).join('/');
+                 window.location = '/'+pathName; */ 
+                 window.location = '/session/create';
+               }
+             });
+};
+
+
+app.login = function(formId){
+   // Hide the error message (if it's currently shown due to a previous error)
+   document.querySelector("#"+formId+" .formError").style.display = 'none';
+   // Hide the success message (if it's currently shown due to a previous error)
+   if(document.querySelector("#"+formId+" .formSuccess")){
+     document.querySelector("#"+formId+" .formSuccess").style.display = 'none';
+   } 
+
+   let method = "POST",
+       path = '/api/tokens',
+       payload = {};
+
+   //var elements = this.elements;
+   payload.phone = document.getElementById('phone').value;
+   payload.password= document.getElementById('password').value;
+   app.client.request(undefined,path,method,undefined,payload,function(statusCode,responsePayload){
+             // Display an error on the form if needed
+             if(statusCode !== 200){
+               
+               if(statusCode == 403){
+                 // log the user out
+                 app.logUserOut();
+               } else {
+                 // Try to get the error from the api, or set a default error message
+                 var error = typeof(responsePayload.Error) == 'string' ? responsePayload.Error : 'An error has occured, please try again';
+                 // Set the formError field with the error text
+                 document.querySelector("#"+formId+" .formError").innerHTML = error;
+                 // Show (unhide) the form error field on the form
+                 document.querySelector("#"+formId+" .formError").style.display = 'block';
+               }
+             } else {
+               // If successful, send to form response processor
+               app.setSessionToken(responsePayload);
+               var parts = document.referrer.split('://')[1].split('/');
+               var pathName = parts.slice(1).join('/');
+               
+               // @TODO - redirect the user to the previous page, but check
+               // for every unnecessary pages to come back, e.i. 'session/deleted'
+               if(pathName == 'session/create' || pathName == 'session/deleted'){
+               window.location = '/'
+               } else {
+                window.location = '/'+pathName;;
+               }
+             }
+           });
+};
+
+app.accountEdit = function(formId){
+             // Hide the error message (if it's currently shown due to a previous error)
+             document.querySelector("#"+formId+" .formError").style.display = 'none';
+             // Hide the success message (if it's currently shown due to a previous error)
+            if(document.querySelector("#"+formId+" .formSuccess")){
+            document.querySelector("#"+formId+" .formSuccess").style.display = 'none';
+            } 
+  
+            let method = "PUT",
+            path = '/api/users',
+            payload = {};
+    
+            //var elements = this.elements;
+            payload.phone = document.getElementById('phone').value;
+            payload.firstName = document.getElementById('firstName').value;
+            payload.lastName = document.getElementById('lastName').value;
+            
+            app.client.request(undefined,path,method,undefined,payload,function(statusCode,responsePayload){
+               // Display an error on the form if needed
+               if(statusCode !== 200){
+                 
+                 if(statusCode == 403){
+                   // log the user out
+                   app.logUserOut();
+                 } else {
+                   // Try to get the error from the api, or set a default error message
+                   var error = typeof(responsePayload.Error) == 'string' ? responsePayload.Error : 'An error has occured, please try again';
+                   // Set the formError field with the error text
+                   document.querySelector("#"+formId+" .formError").innerHTML = error;
+                   // Show (unhide) the form error field on the form
+                   document.querySelector("#"+formId+" .formError").style.display = 'block';
+                 }
+               } else {
+                   // @TODO inform that user has changed his accound details
+                 confirm("User Details updated!");
+               }
+             });
+};
+
+app.passwordEdit = function(formId){
+  // Hide the error message (if it's currently shown due to a previous error)
+  document.querySelector("#"+formId+" .formError").style.display = 'none';
+  // Hide the success message (if it's currently shown due to a previous error)
+ if(document.querySelector("#"+formId+" .formSuccess")){
+ document.querySelector("#"+formId+" .formSuccess").style.display = 'none';
+ } 
+
+ let method = "PUT",
+ path = '/api/users',
+ payload = {};
+ //var elements = this.elements;
+ payload.phone = document.getElementById('phone').value;
+ payload.password = document.getElementById('password').value;
+ app.client.request(undefined,path,method,undefined,payload,function(statusCode,responsePayload){
+    // Display an error on the form if needed
+    if(statusCode !== 200){
+      
+      if(statusCode == 403){
+        // log the user out
+        app.logUserOut();
+      } else {
+        // Try to get the error from the api, or set a default error message
+        var error = typeof(responsePayload.Error) == 'string' ? responsePayload.Error : 'An error has occured, please try again';
+        // Set the formError field with the error text
+        document.querySelector("#"+formId+" .formError").innerHTML = error;
+        // Show (unhide) the form error field on the form
+        document.querySelector("#"+formId+" .formError").style.display = 'block';
+      }
+    } else {
+        // @TODO inform that user has changed his accound details
+      confirm("User Password updated!");
+    }
+  });
+};
+
+app.accountDelete = function(formId){
+  let method = "DELETE",
+  path = '/api/users',
+  payload = {};
+  //var elements = this.elements;
+  let queryStringObject = {
+    'phone':document.getElementById('phone').value
+  }
+  
+  app.client.request(undefined,path,method,queryStringObject,payload,function(statusCode,responsePayload){
+     // Display an error on the form if needed
+     if(statusCode !== 200){
+       
+       if(statusCode == 403){
+         // log the user out
+         app.logUserOut();
+       } else {
+         // Try to get the error from the api, or set a default error message
+         var error = typeof(responsePayload.Error) == 'string' ? responsePayload.Error : 'An error has occured, please try again';
+         // Set the formError field with the error text
+         document.querySelector("#"+formId+" .formError").innerHTML = error;
+         // Show (unhide) the form error field on the form
+         document.querySelector("#"+formId+" .formError").style.display = 'block';
+       }
+     } else {
+         // @TODO inform that user no longer exists
+       confirm("User account Deleted");
+       app.logUserOut();
+
+     }
+   });
+};
+
+app.porachkaDelete = function(formId){
+  let method = "DELETE",
+  path = '/api/porachki';
+
+  let queryStringObject = {
+    'id':document.getElementById('pid').value
+  }
+
+  app.client.request(undefined,path,method,queryStringObject,undefined,function(statusCode,responsePayload){
+     // Display an error on the form if needed
+     if(statusCode !== 200){
+       
+       if(statusCode == 403){
+         // log the user out
+         app.logUserOut();
+       } else {
+         // Try to get the error from the api, or set a default error message
+         var error = typeof(responsePayload.Error) == 'string' ? responsePayload.Error : 'An error has occured, please try again';
+         // Set the formError field with the error text
+         document.querySelector("#"+formId+" .formError").innerHTML = error;
+         // Show (unhide) the form error field on the form
+         document.querySelector("#"+formId+" .formError").style.display = 'block';
+       }
+     } else {
+         
+       confirm("Porachkata Deleted");
+       var parts = document.referrer.split('://')[1].split('/');
+       var pathName = parts.slice(1).join('/');
+       window.location = '/'+pathName;;
+     }
+   });
+};
+
+app.porachkaCreate = function(formId){
+  let method = "POST",
+      path = '/api/porachki',
+      payload={};
+  payload.title = document.getElementById('title').value;
+  payload.additionalData = document.getElementById('additionalData').value;
+  payload.period = parseInt(document.getElementById('period').value);
+  
+  app.client.request(undefined,path,method,undefined,payload,function(statusCode,responsePayload){
+     // Display an error on the form if needed
+     if(statusCode !== 200){
+       
+       if(statusCode == 403){
+         // log the user out
+         app.logUserOut();
+       } else {
+         // Try to get the error from the api, or set a default error message
+         var error = typeof(responsePayload.Error) == 'string' ? responsePayload.Error : 'An error has occured, please try again';
+         // Set the formError field with the error text
+         document.querySelector("#"+formId+" .formError").innerHTML = error;
+         // Show (unhide) the form error field on the form
+         document.querySelector("#"+formId+" .formError").style.display = 'block';
+       }
+     } else {
+         
+       confirm("Porachka just Created");
+ 
+       window.location = '/dash/all';
+     }
+   });
+};
+
+app.porachkaEdit = function(formId){
+  let method = "PUT",
+      path = '/api/porachki',
+      payload={};
+  payload.id = document.getElementById('pid').value;
+  payload.title = document.getElementById('title').value;
+  payload.additionalData = document.getElementById('additionalData').value;
+  payload.period = parseInt(document.getElementById('period').value);
+  
+  app.client.request(undefined,path,method,undefined,payload,function(statusCode,responsePayload){
+     // Display an error on the form if needed
+     if(statusCode !== 200){
+       
+       if(statusCode == 403){
+         // log the user out
+         app.logUserOut();
+       } else {
+         // Try to get the error from the api, or set a default error message
+         var error = typeof(responsePayload.Error) == 'string' ? responsePayload.Error : 'An error has occured, please try again';
+         // Set the formError field with the error text
+         document.querySelector("#"+formId+" .formError").innerHTML = error;
+         // Show (unhide) the form error field on the form
+         document.querySelector("#"+formId+" .formError").style.display = 'block';
+       }
+     } else {
+         
+       confirm("Porachka just Edited");
+ 
+       window.location = '/dash/all';
+     }
+   });
+};
+app.home = function (event){
+
+  let inputSearch = document.getElementById('s1').value;
+  document.getElementById('s1').value = document.getElementById('s1').value.trim();
+  //@TODO sanity chech of inputSearch
+  inputSearch = typeof(inputSearch)=='string' && inputSearch.trim().length >0 ? inputSearch.trim() : false;
+  if (inputSearch){
+    let method = "GET",
+    path = '/porachki/search',
+    payload = {};
+    let queryStringObject = {
+      'search':inputSearch
+    };
+      app.client.request(undefined,path,method,queryStringObject,undefined,function(stausCode,payload){
+          if(stausCode==200){
+              document.getElementById("list").innerHTML='';
+                payload.forEach(element => {
+                  app.client.request(undefined,'api/porachki','get',{'id':element},undefined,function(statusCode,payload){
+                      if (statusCode==200){
+                          var ul = document.getElementById("list");
+                          var div= document.createElement('div');
+                          div.id=payload.porachkaId
+                          div.className = 'emfi';
+                          div.addEventListener('click',function(e){
+
+                            //Вариант със презареждане на цялата страница
+                            let location = 'porachki/get?id='+ this.id;
+                            //console.log(location)
+                            window.location=location;
+
+                            // @TODO - Вариант с презареждане само на body
+/*                               app.client.request(undefined,'porachki/dash','get',{'id':this.id},undefined,function(statusCode,payload){
+                              if (statusCode==200) {
+                                //console.log(payload.obj)
+                                let bbb = document.getElementsByClassName('content');
+                                console.log(bbb)
+                                bbb.innerHTML='<div>dfsdfds</div>';
+                                console.log(bbb)
+                              } else {
+                                //@TODO deal woth the error
+                              }
+                            }); */
+
+                          });
+
+                          div.innerHTML += payload.title;
+                          var innerdiv = document.createElement('div');
+                          innerdiv.className = 'inn';
+                          innerdiv.innerHTML += payload.additionalData;
+                          div.appendChild(innerdiv);
+                          ul.appendChild(div);
+                          //@TODO - add event click on each div class emfi
+                          //@TODO - organize appearance order to be the same any time
+                      }
+                  });
+                });
+          }else{
+            //@TODO the error show if the server returns another statusCode
+          };
+      });
+    };
 };
