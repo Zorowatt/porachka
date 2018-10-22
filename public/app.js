@@ -49,13 +49,11 @@ window.onload = function(){
 app.bindForms = function(){
   if(document.querySelector("form")){
     var allForms = document.querySelectorAll("form");
-
     for(var i = 0; i < allForms.length; i++){
         allForms[i].addEventListener("submit", function(e){
         e.preventDefault();
-        var formId = this.id;  
-
-        //Log in user
+        var formId = this.id; 
+         
         if (formId == "login"){ 
           app.login(formId);
         }
@@ -93,24 +91,21 @@ app.setLoggedInClass = function(add,token){
   var target = document.querySelector("body");
   if(add){
     target.classList.add('loggedIn');
-      let name = 'myCookie';
-      let value = token.id;
-      let days= 2;
-      var expires = "";
-      if (days) {
-          var date = new Date();
-          date.setTime(date.getTime() + (days*24*60*60*1000));
-          expires = "; expires=" + date.toUTCString();
-      }
-      document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+    let days= 2;
+    var expires = "";
+    if (days) {
+        var date = new Date();
+        date.setTime(date.getTime() + (days*24*60*60*1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    docCookies.setItem('biskvitka', token.id, expires,'/');
   
   } else {
     target.classList.remove('loggedIn');
-    let name = 'myCookie';
-    document.cookie = name+'=; Max-Age=-99999999;';
+    docCookies.removeItem('biskvitka', '/');
     window.localStorage.removeItem('token');
   }
-};
+};  
 
 // Set the session token in the app.config object as well as localstorage
 app.setSessionToken = function(token){
@@ -423,6 +418,67 @@ app.client.request = function(headers,path,method,queryStringObject,payload,call
 
 };
 
+app.plain = function(headers,path,method,queryStringObject,payload,callback){
+
+  // Set defaults / sanity check
+  headers = typeof(headers) == 'object' && headers !== null ? headers : {};
+  path = typeof(path) == 'string' ? path : '/';
+  method = typeof(method) == 'string' && ['POST','GET','PUT','DELETE'].indexOf(method.toUpperCase()) > -1 ? method.toUpperCase() : 'GET';
+  queryStringObject = typeof(queryStringObject) == 'object' && queryStringObject !== null ? queryStringObject : {};
+  payload = typeof(payload) == 'object' && payload !== null ? payload : {};
+  callback = typeof(callback) == 'function' ? callback : false;
+
+  // For each query string parameter sent, add it to the path
+  var requestUrl = path+'?';
+  var counter = 0;
+  for(var queryKey in queryStringObject){
+     if(queryStringObject.hasOwnProperty(queryKey)){
+       counter++;
+       // If at least one query string parameter has already been added, preprend new ones with an ampersand
+       if(counter > 1){
+         requestUrl+='&';
+       }
+       // Add the key and value
+       requestUrl+=queryKey+'='+queryStringObject[queryKey];
+     }
+  }
+
+  // Form the http request as a text/html type
+  var xhr = new XMLHttpRequest();
+  xhr.open(method, requestUrl, true);
+  xhr.setRequestHeader("Content-type", "text/html");
+
+  // For each header sent, add it to the request
+  for(var headerKey in headers){
+     if(headers.hasOwnProperty(headerKey)){
+       xhr.setRequestHeader(headerKey, headers[headerKey]);
+     }
+  }
+
+  // If there is a current session token set, add that as a header
+  if(app.config.sessionToken){
+    xhr.setRequestHeader("token", app.config.sessionToken.id);
+  }
+
+  // When the request comes back, handle the response
+  xhr.onreadystatechange = function() {
+      if(xhr.readyState == XMLHttpRequest.DONE) {
+        var statusCode = xhr.status;
+        var responseReturned = xhr.responseText;
+
+        // Callback if requested
+        if(callback){
+            callback(statusCode,responseReturned);
+        }
+      }
+  }
+
+  // Send the payload as JSON
+  var payloadString = JSON.stringify(payload);
+  xhr.send(payloadString);
+
+};
+
 app.signUp = function(formId){
 
           // @TODO - check and inform if there is logged user already
@@ -439,11 +495,11 @@ app.signUp = function(formId){
             payload = {};
     
             //var elements = this.elements;
-            payload.phone = document.getElementById('phone').value;
-            payload.firstName = document.getElementById('firstName').value;
-            payload.lastName = document.getElementById('lastName').value;
-            payload.password = document.getElementById('password').value;
-            payload.tosAgreement = document.getElementById('tosAgreement').checked;
+            payload.phone = document.getElementById('signupphone').value;
+            payload.firstName = document.getElementById('signupfirstName').value;
+            payload.lastName = document.getElementById('signuplastName').value;
+            payload.password = document.getElementById('signuppassword').value;
+            payload.tosAgreement = document.getElementById('signuptosAgreement').checked;
             app.client.request(undefined,path,method,undefined,payload,function(statusCode,responsePayload){
                // Display an error on the form if needed
                if(statusCode !== 200){
@@ -464,10 +520,12 @@ app.signUp = function(formId){
                  // @TODO inform that user has been created/signed up
                  //       or redirect the user to the sign up window
                  confirm("User Signed up!");
+                 var modalSignup = document.querySelector(".modalSignup");
+                 modalSignup.classList.toggle("show-modal");
 /*                  var parts = document.referrer.split('://')[1].split('/');
                  var pathName = parts.slice(1).join('/');
                  window.location = '/'+pathName; */ 
-                 window.location = '/session/create';
+                // window.location = '/session/create';
                }
              });
 };
@@ -486,8 +544,8 @@ app.login = function(formId){
        payload = {};
 
    //var elements = this.elements;
-   payload.phone = document.getElementById('phone').value;
-   payload.password= document.getElementById('password').value;
+   payload.phone = document.getElementById('loginPhone').value;
+   payload.password= document.getElementById('loginPassword').value;
    app.client.request(undefined,path,method,undefined,payload,function(statusCode,responsePayload){
              // Display an error on the form if needed
              if(statusCode !== 200){
@@ -504,18 +562,24 @@ app.login = function(formId){
                  document.querySelector("#"+formId+" .formError").style.display = 'block';
                }
              } else {
-               // If successful, send to form response processor
+
+                // If successful, send to form response processor
                app.setSessionToken(responsePayload);
-               var parts = document.referrer.split('://')[1].split('/');
+               var modalLogin = document.querySelector(".modalLogin");
+               modalLogin.classList.toggle("show-modal");
+/*                var parts = document.referrer.split('://')[1].split('/');
                var pathName = parts.slice(1).join('/');
                
                // @TODO - redirect the user to the previous page, but check
                // for every unnecessary pages to come back, e.i. 'session/deleted'
                if(pathName == 'session/create' || pathName == 'session/deleted'){
-               window.location = '/'
+               window.location = '/';
+               
                } else {
                 window.location = '/'+pathName;;
-               }
+               }  */
+               //window.location = '/';
+
              }
            });
 };
@@ -751,21 +815,20 @@ app.home = function (event){
 
                             //Вариант със презареждане на цялата страница
                             let location = 'porachki/get?id='+ this.id;
-                            //console.log(location)
-                            window.location=location;
+                             app.plain(undefined,'porachki/get','get',{'id':this.id},undefined,function(statusCode,payload){
+                              
+                              var div= document.getElementById('content');
+                              div.innerHTML='';
+                              var gg= document.createElement('div');
 
-                            // @TODO - Вариант с презареждане само на body
-/*                               app.client.request(undefined,'porachki/dash','get',{'id':this.id},undefined,function(statusCode,payload){
-                              if (statusCode==200) {
-                                //console.log(payload.obj)
-                                let bbb = document.getElementsByClassName('content');
-                                console.log(bbb)
-                                bbb.innerHTML='<div>dfsdfds</div>';
-                                console.log(bbb)
-                              } else {
-                                //@TODO deal woth the error
-                              }
-                            }); */
+                              gg.innerHTML = payload;
+                              div.appendChild(gg);
+                              history.pushState('d', 'sdf', 'http://localhost:3000/');
+                              bUpdateURL = false;
+
+                            }); 
+
+                            
 
                           });
 
@@ -843,7 +906,7 @@ app.homeAutoComplete = function(){
     // Logic for account settings page
     if(primaryClass == 'index'){
 
-      document.getElementById('s1').addEventListener("keydown", function(event){rrr(event)});
+/*       document.getElementById('s1').addEventListener("keydown", function(event){rrr(event)});
      
       function rrr(e) {
         console.log(e)
@@ -859,13 +922,14 @@ app.homeAutoComplete = function(){
             break;
           }
         } 
-      }
+      } */
       
      
 
 
       // Add a keyup event listener to our input element
-      document.getElementById('s1').addEventListener("input", function(event){hinter(event)});
+      document.getElementById('s1').addEventListener("keyup", function(event){hinter(event)});
+      
       // create one global XHR object 
       // so we can abort old requests when a new one is make
       window.hinterXHR = new XMLHttpRequest();
@@ -891,10 +955,12 @@ app.homeAutoComplete = function(){
 
       // Autocomplete for form
       var hinter = function (event) {
+        //choose.innerHTML = "";
+
          var input = event.target;
         var choose = document.getElementById('choose');
         // minimum number of characters before we start to generate suggestions
-        var min_characters = 1;
+        var min_characters = 2;
         if (input.value.length < min_characters ) { 
           return;
         } else { 
@@ -904,16 +970,13 @@ app.homeAutoComplete = function(){
               var response = JSON.parse( this.responseText ); 
               choose.innerHTML = "";
               if (response.length>0 && typeof(response)=='object'){
-
-
-
-
                 response.forEach(function(item) {
-                            // Create a new <option> element.
-                            var option = document.createElement('option');
-                            option.value = item;
-                            choose.appendChild(option);
-                        });
+                  // Create a new <option> element.
+                  var option = document.createElement('option');
+                  option.value = item;
+                  choose.appendChild(option);
+                  
+                });
                 
               };
             }
@@ -948,3 +1011,84 @@ app.homeAutoComplete = function(){
   alert("name input is invalid")
   return false;
 } */
+
+
+let ggg= function(){
+  console.log(23423)
+}
+
+
+
+/*\
+|*|
+|*|  :: cookies.js ::
+|*|
+|*|  A complete cookies reader/writer framework with full unicode support.
+|*|
+|*|  Revision #3 - July 13th, 2017
+|*|
+|*|  https://developer.mozilla.org/en-US/docs/Web/API/document.cookie
+|*|  https://developer.mozilla.org/User:fusionchess
+|*|  https://github.com/madmurphy/cookies.js
+|*|
+|*|  This framework is released under the GNU Public License, version 3 or later.
+|*|  http://www.gnu.org/licenses/gpl-3.0-standalone.html
+|*|
+|*|  Syntaxes:
+|*|
+|*|  * docCookies.setItem(name, value[, end[, path[, domain[, secure]]]])
+|*|  * docCookies.getItem(name)
+|*|  * docCookies.removeItem(name[, path[, domain]])
+|*|  * docCookies.hasItem(name)
+|*|  * docCookies.keys()
+|*|
+\*/
+
+var docCookies = {
+  getItem: function (sKey) {
+    if (!sKey) { return null; }
+    return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(sKey).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
+  },
+  setItem: function (sKey, sValue, vEnd, sPath, sDomain, bSecure) {
+    if (!sKey || /^(?:expires|max\-age|path|domain|secure)$/i.test(sKey)) { return false; }
+    var sExpires = "";
+    if (vEnd) {
+      switch (vEnd.constructor) {
+        case Number:
+          sExpires = vEnd === Infinity ? "; expires=Fri, 31 Dec 9999 23:59:59 GMT" : "; max-age=" + vEnd;
+          /*
+          Note: Despite officially defined in RFC 6265, the use of `max-age` is not compatible with any
+          version of Internet Explorer, Edge and some mobile browsers. Therefore passing a number to
+          the end parameter might not work as expected. A possible solution might be to convert the the
+          relative time to an absolute time. For instance, replacing the previous line with:
+          */
+          /*
+          sExpires = vEnd === Infinity ? "; expires=Fri, 31 Dec 9999 23:59:59 GMT" : "; expires=" + (new Date(vEnd * 1e3 + Date.now())).toUTCString();
+          */
+          break;
+        case String:
+          sExpires = "; expires=" + vEnd;
+          break;
+        case Date:
+          sExpires = "; expires=" + vEnd.toUTCString();
+          break;
+      }
+    }
+    document.cookie = encodeURIComponent(sKey) + "=" + encodeURIComponent(sValue) + sExpires + (sDomain ? "; domain=" + sDomain : "") + (sPath ? "; path=" + sPath : "") + (bSecure ? "; secure" : "");
+    return true;
+  },
+  removeItem: function (sKey, sPath, sDomain) {
+    if (!this.hasItem(sKey)) { return false; }
+    document.cookie = encodeURIComponent(sKey) + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT" + (sDomain ? "; domain=" + sDomain : "") + (sPath ? "; path=" + sPath : "");
+    return true;
+  },
+  hasItem: function (sKey) {
+    if (!sKey || /^(?:expires|max\-age|path|domain|secure)$/i.test(sKey)) { return false; }
+    return (new RegExp("(?:^|;\\s*)" + encodeURIComponent(sKey).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=")).test(document.cookie);
+  },
+  keys: function () {
+    var aKeys = document.cookie.replace(/((?:^|\s*;)[^\=]+)(?=;|$)|^\s*|\s*(?:\=[^;]*)?(?:\1|$)/g, "").split(/\s*(?:\=[^;]*)?;\s*/);
+    for (var nLen = aKeys.length, nIdx = 0; nIdx < nLen; nIdx++) { aKeys[nIdx] = decodeURIComponent(aKeys[nIdx]); }
+    return aKeys;
+  }
+};

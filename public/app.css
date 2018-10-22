@@ -177,7 +177,9 @@ body.index .blurb{
 .cta.red{
   background-color: #c83737 !important;
 }
-
+.cta.white{
+  background-color: #ffffff !important;
+}
 .warning{
   font-style: italic;
   color: #c83737;
@@ -208,6 +210,7 @@ body.index .blurb{
   margin: 0 auto;
   max-width: 500px;
   padding: 15px;
+  padding-top: 35px;
 }
 
 .formError{
@@ -327,3 +330,9 @@ td a, td a:hover, td a:active{
   margin-top: 40px;
   display: none;
 }
+
+
+
+
+
+
